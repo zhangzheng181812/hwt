@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.admin.goodsStock.mapper.GoodsStockMapper">
+    <!--查询产品配置列表-->
+    <select id="selectGoodsStock" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        SELECT gs.*,goods.goods_name FROM `hwt_goods_stock` gs LEFT JOIN goods_info goods ON gs.goods_id = goods.goods_id where 1=1
+        <if test="goods_id != null and goods_id !=''">
+            and  gs.goods_id=#{goods_id}
+        </if>
+        <if test="status != null and status !=''">
+            and  gs.status=#{status}
+        </if>
+        ORDER  by  gs.create_time  desc
+    </select>
+    <update id="updateGoodsStock" parameterType="java.util.HashMap">
+        update  hwt_goods_stock set
+        cateid=#{cateid},
+        status=#{status}
+        where id=#{id}
+    </update>
+    <insert id="insGoodsStock" parameterType="java.util.HashMap">
+        insert into hwt_goods_stock (goods_id,cateid,status,create_time)
+        values( #{goods_id},#{cateid},#{status},now())
+    </insert>
+</mapper>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>产品详情信息列表</title>
+    <div th:replace="head"></div>
+    <style>
+        .el-select {
+            width: 140px;
+        }
+        .el-table--striped .el-table__body tr.el-table__row--striped.current-row td, .el-table__body tr.current-row>td, .el-table__body tr.hover-row.current-row>td, .el-table__body tr.hover-row.el-table__row--striped.current-row>td, .el-table__body tr.hover-row.el-table__row--striped>td, .el-table__body tr.hover-row>td,.el-table--enable-row-hover .el-table__body tr:hover>td {
+            background-color: #409EFF;
+        }
+        .el-table--border .has-gutter td:nth-last-of-type(2), .el-table--border .has-gutter th:nth-last-of-type(2) {
+            border-right: 1px solid #ebeef5;
+        }
+    </style>
+</head>
+<body>
+<div id="test">
+    <div class="classify-company-c">
+        <span style="margin-left: 16px;">产品编号:</span>
+        <el-input  style="width:10em"  type="text" v-model="goods_id"> </el-input>
+        <span style="margin-left: 16px;">时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd"   style="width:10em" type="date"  v-model="time"  > </el-date-picker>
+        <span style="margin-left: 16px;">状态:</span>
+        <el-select v-model="status">
+            <el-option v-for="drug in drugs"  :key="drug.status"  :label="drug.statusName" :value="drug.status" ></el-option>
+        </el-select>
+        <el-button type="primary" name="button" v-on:click="search">查询</el-button>
+        <el-button type="primary" name="button" v-on:click="add">添加</el-button>
+        <el-button type="primary" name="button" v-on:click="updateGoodsInfoStatus">冻结/解冻</el-button>
+    </div>
+    <div style="margin-top:15px">
+        <el-table
+                ref="testTable"
+                :data="tableData"
+                stripe
+                style="width:100%"
+                border
+                highlight-current-row
+                v-on:current-change="singleCurrentChange"
+                v-on:row-dblclick="handleMousedblclick">
+            <el-table-column prop="id" width="70" label="流水号" ></el-table-column>
+            <el-table-column prop="goods_id" width="190" label="产品编号" ></el-table-column>
+            <el-table-column prop="goods_name" width="190" label="产品名称" ></el-table-column>
+            <el-table-column prop="topic" width="190" label="描述名称" ></el-table-column>
+            <el-table-column  prop="status" width="70" :formatter="formatStatus"  label="状态" ></el-table-column>
+            <el-table-column  prop="orderby" width="70" label="级别" ></el-table-column>
+            <el-table-column prop="create_time" width="190" :formatter="dateFormat" label="创建时间" />
+        </el-table>
+        <div align="center">
+            <el-pagination
+                    v-on:size-change="handleSizeChange"
+                    v-on:current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pagesize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </div>
+    </div>
+   <el-dialog title="新增产品详情" :visible.sync="dialogFormVisible" width="800px;"
+              :close-on-press-escape="showClose" :show-close="showClose" :close-on-click-modal="showClose">
+        <el-form ref="form" label-width="100px" :label-position="'right'" :rules="rules" class="demo-ruleForm" :model="ruleForm">
+            <el-form-item label="产品编号:" prop="goods_id">
+                <!--<el-input style="width:10em" v-model="ruleForm.goods_id"></el-input>-->
+                <el-select filterable readOnly="false"  placeholder="请选择产品编号" v-model="ruleForm.goods_id"  >
+                    <el-option
+                            v-for="item in branchOptions"
+                            :key="item.goods_name"
+                            :label="item.goods_id"
+                            :value="item.goods_id">
+                        <span style="float: left">{{ item.goods_id }}</span>
+                        <span style="float: right; color: #8492a6; font-size: 13px">{{ item.goods_name }}</span>
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="标题:" prop="topic">
+                <el-input style="width:10em" v-model="ruleForm.topic"></el-input>
+            </el-form-item>
+            <el-form-item label="状态:" prop="status">
+                <el-radio-group v-model="ruleForm.status">
+                    <el-radio :label="1">正常</el-radio>
+                    <el-radio :label="0">冻结</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="排序:" prop="orderby">
+                <el-input style="width:10em" v-model.number="ruleForm.orderby" maxlength="11"></el-input>
+            </el-form-item>
+            <el-form-item label="详情描述:" prop="content">
+                <quill-editor v-model="ruleForm.content"
+                              ref="quillEditorA"
+                              :options="editorOption">
+                </quill-editor>
+            </el-form-item>
+            <el-form-item label="产品图:" prop="pic_list">
+                <el-upload
+                        style="width:18em"
+                        id="productPic"
+                        class="upload-demo"
+                        action="eProduct/toGoodsDetailPic"
+                        :before-upload="beforeAvatarUpload"
+                        :on-success="handleAvatarSuccess"
+                        :on-remove="handRemove"
+                        :on-preview="handlePreview"
+                        list-type="picture"
+                        :file-list="fileList">
+                    <el-button size="small" type="primary">上传附件</el-button>
+                </el-upload>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button v-on:click="cancelDia('form')">取 消</el-button>
+            <el-button type="primary" :disabled="submitDisabled" v-on:click="ins('form',1)">确 定</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog title="修改产品详情" :visible.sync="dialogFormVisible2" width="800px;"
+               :close-on-press-escape="showClose" :show-close="showClose" :close-on-click-modal="showClose">
+        <el-form ref="form2" label-width="100px" :label-position="'right'" :rules="rules" class="demo-ruleForm" :model="ruleForm">
+            <el-form-item label="产品编号:" prop="goods_id">
+                <!--<el-input style="width:10em" v-model="ruleForm.goods_id"></el-input>-->
+                <el-select filterable readOnly="false" placeholder="请选择产品编号" v-model="ruleForm.goods_id"  >
+                    <el-option
+                            v-for="item in branchOptions"
+                            :key="item.goods_name"
+                            :label="item.goods_id"
+                            :value="item.goods_id">
+                        <span style="float: left">{{ item.goods_id }}</span>
+                        <span style="float: right; color: #8492a6; font-size: 13px">{{ item.goods_name }}</span>
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="标题:" prop="topic">
+                <el-input style="width:10em" v-model="ruleForm.topic"></el-input>
+            </el-form-item>
+            <el-form-item label="状态:" prop="status">
+                <el-radio-group v-model="ruleForm.status">
+                    <el-radio :label="1">正常</el-radio>
+                    <el-radio :label="0">冻结</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="排序:" prop="orderby">
+                <el-input style="width:10em" v-model.number="ruleForm.orderby" maxlength="11"></el-input>
+            </el-form-item>
+            <el-form-item label="详情描述:" prop="content">
+                <quill-editor v-model="ruleForm.content"
+                              ref="quillEditorA"
+                              :options="editorOption">
+                </quill-editor>
+            </el-form-item>
+            <el-form-item label="产品图:" prop="pic_list">
+                <el-upload
+                        style="width:18em"
+                        id="productPic"
+                        class="upload-demo"
+                        action="eProduct/toGoodsDetailPic"
+                        :before-upload="beforeAvatarUpload"
+                        :on-success="handleAvatarSuccess"
+                        :on-remove="handRemove"
+                        :on-preview="handlePreview"
+                        list-type="picture"
+                        :file-list="fileList">
+                    <el-button size="small" type="primary">上传附件</el-button>
+                </el-upload>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button v-on:click="cancelDia('form2')">取 消</el-button>
+            <el-button type="primary" :disabled="submitDisabled" v-on:click="ins('form2',2)">确 定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    Vue.use(VueQuillEditor)
+    var vue = new Vue({
+        el: "#test",
+        data: {
+            singleSelect:{},
+            showClose:false,
+            fileList: [],
+            editorOption: {
+                theme: 'snow'
+            },
+            content:'',
+            status:'',
+            drugs:[{status:"",statusName:'全部'},{status:"1",statusName:'正常'},{status:"0",statusName:'冻结'}],
+            goods_id:'',
+            time:'',
+            submitDisabled:false,
+            branchOptions:[],
+            dialogFormVisible: false,
+            dialogFormVisible2: false,
+            //表格当前页数据
+            tableData: [],
+            //多选数组
+            multipleSelection: [],
+            //请求的URL
+            url: [[@{/eProduct/toGoodsDetailList}]],
+            //搜索条件
+            //下拉菜单选项
+            select: '',
+            //默认每页数据量
+            pagesize: 10,
+            //默认高亮行数据id
+            highlightId: -1,
+            //当前页码
+            currentPage: 1,
+            //查询的页码
+            start: 1,
+            //默认数据总数
+            totalCount: 1,
+            ruleForm: {
+                id: '',
+                goods_id: '',
+                goods_name: '',
+                topic: '',
+                content: '',
+                status: 1,
+                orderby: 0,
+                pic_list: '',
+                },
+                rules: {
+                    goods_id: [
+                        {required: true, message: '请输入产品编号', trigger: 'blur'},
+                        {min: 2, max: 10, message: '长度在 2 到 10 个字符', trigger: 'blur'}
+                    ],
+                    topic: [
+                        {required: true, message: '请输入标题', trigger: 'blur'},
+                        {min: 2, max: 10, message: '长度在 2 到 10 个字符', trigger: 'blur'}
+                    ],
+                    orderby: [
+                        {required: true, message: '请输入排序数值', trigger: 'blur'},
+                        {type: 'number',  message: '必须为数字', trigger: 'blur'}
+                    ],
+                    status: [
+                        {required: true}
+                    ],
+                }
+        },
+         updated : function(){
+             let picStr='';
+             this.fileList.forEach((function(e,index){
+             picStr = picStr+','+e.url;
+             }))
+             this.ruleForm.pic_list = picStr;
+         },
+        methods: {
+            //查询有效产品信息
+            selectAllBranch:function(){
+                var param = {"status": 1};
+                this.$http.post([[@{/eProduct/selGoodsInfoId}]],  param, { emulateJSON: true }).then(function (response) {
+                    this.branchOptions = response.data;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            //取消
+            cancelDia:function(form){
+                this.submitDisabled=false;
+                this.dialogFormVisible=false;
+                this.dialogFormVisible2=false;
+                //清空数据
+                this.$refs[form].resetFields();
+                this.ruleForm.topic = '';
+                this.ruleForm.content = '';
+                this.ruleForm.goods_id = '';
+                this.ruleForm.goods_name = '';
+                this.ruleForm.orderby = 0;
+                this.ruleForm.status = 1;
+                this.ruleForm.id = '';
+                this.ruleForm.pic_list = '';
+                this.fileList = [];
+                this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+            },
+            add:function () {
+                this.dialogFormVisible = true;
+                this.selectAllBranch();
+            },
+
+            ins(formName,type){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.submitDisabled=true;
+                        var json = {
+                            'topic':this.ruleForm.topic,
+                            'content':this.ruleForm.content,
+                            'goods_id':this.ruleForm.goods_id,
+                            'goods_name': this.ruleForm.goods_name,
+                            'orderby': this.ruleForm.orderby,
+                            'status': this.ruleForm.status,
+                            'id':  this.ruleForm.id,
+                            'pic_list':  this.ruleForm.pic_list,
+                        };
+                        let postUrl ='';
+                        postUrl=[[@{/eProduct/saveGoodsInfoDetail}]];
+                        this.$http.post(postUrl,json, {emulateJSON: true}).then(
+                                (response)=> {
+//                                    console.log(response)
+                                        this.submitDisabled=false;
+                                    if (response.data.code == '000') {
+                                        this.$message({
+                                            message: '恭喜你，编辑成功',
+                                            type: 'success'
+                                        });
+                                        this.cancelDia(formName);
+                                    } else{
+                                        this.$notify({
+                                            title: '警告',
+                                            message: '编辑失败，请重试',
+                                            type: 'warning'
+                                        });
+                                        return false;
+                                    }
+                                }
+                        )
+//                        this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+                    } else {
+                        console.log('error submit!!');
+                    }
+                    return false;
+                });
+            },
+            //单击选中
+            singleCurrentChange(val){
+                this.singleSelect = val;
+            },
+            //更新状态
+            updateGoodsInfoStatus(){
+                if(!!this.singleSelect ==false){
+                    this.open("请单击选择一项","001");
+                    return false;
+                }
+                let id = this.singleSelect.id;
+                let status = this.singleSelect.status;
+                if(!!id ==false){
+                    this.open("请单击选择一项","001");
+                    return false;
+                }
+                if("1" == status || 1 == status){
+                    status = "0"
+                }else{
+                    status = "1";
+                }
+                let param = {"id":id,"status":status};
+                this.$http.post([[@{/eProduct/updateGoodsDetailStatus}]],  param, { emulateJSON: true }).then(function (res) {
+                  this.singleSelect={};
+                  this.open(res.data.msg,res.data.code);
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            //提示信息
+            open: function (msg, code) {
+                if (code == '000') {
+                    this.$alert(msg, '提示', {
+                        confirmButtonText: '确定',
+                        type: 'success',
+                        callback: action => {
+                            this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+                        }
+                    });
+                } else {
+                    this.$alert(msg, '提示', {
+                        confirmButtonText: '确定',
+                        type: 'error',
+                    });
+                }
+            },
+            //双击进行编辑
+            handleMousedblclick(row,column){
+                this.dialogFormVisible2 =true;
+                this.ruleForm.topic = row.topic;
+                this.ruleForm.content = row.content;
+                this.ruleForm.goods_id = row.goods_id;
+                this.ruleForm.goods_name = row.goods_name;
+                this.ruleForm.orderby = row.orderby;
+                this.ruleForm.status = row.status;
+                this.ruleForm.id = row.id;
+                this.ruleForm.pic_list = row.pic_list;
+                let picArray=[];
+                picArray = this.ruleForm.pic_list.split(",");
+                for(var i =0;i<picArray.length;i++){
+                    if(!!picArray[i]){
+                        let name = picArray[i].substring(picArray[i].lastIndexOf("/")+1);
+                        this.fileList.push({name:name,url:picArray[i]});
+                    }
+                }
+                this.selectAllBranch();
+            },
+            search : function(){
+                this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+            },
+            //从服务器读取数据
+            loadData: function (goods_id,time,status, pageNum, pageSize) {
+                var param = {
+                    "goods_id": goods_id,"time":time,"status":status, "page": pageNum,"pageSize": pageSize
+                };
+                this.$http.post(this.url,  param, { emulateJSON: true }).then(function (res) {
+                    this.tableData = res.data.rows;
+                    this.totalCount = res.data.totalCount;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            //每页显示数据量变更
+            handleSizeChange: function (val) {
+                this.pagesize = val;
+                this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+            },
+            //页码变更
+            handleCurrentChange: function (val) {
+                this.currentPage = val;
+                this.loadData(this.goods_id,this.time,this.status, this.currentPage, this.pagesize);
+            },
+            //时间格式化
+            dateFormat: function (row, column) {
+                var date = row[column.property];
+                if (date == undefined) {
+                    return "";
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss");//导入moment.js
+            },
+            //状态格式化
+            formatStatus: function (row, column) {
+                var status = row[column.property];
+                    if (status == 1) {
+                        return "正常";
+                    } else if (status == 0) {
+                        return "冻结";
+                    }else {
+                        return "未知";
+                }
+            },
+            // 上传前对文件的大小的判断
+            beforeAvatarUpload (file) {
+                var fileName = new Array()
+                fileName = file.name.split('.');
+                const extension = fileName[fileName.length - 1] === 'jpg'
+                const extension2 = fileName[fileName.length - 1] === 'png'
+                const isLt2M = file.size / 1024 / 1024 < 10
+                if (!extension && !extension2) {
+                    $('.el-dialog__wrapper').scrollTop(0);
+                    this.$message({
+                        message: '上传文件只能是png、jpg格式',
+                        type: 'warning'
+                    });
+                }
+                if (!isLt2M) {
+                    $('.el-dialog__wrapper').scrollTop(0);
+                    this.$message({
+                        message: '上传文件大小不能超过 10MB!',
+                        type: 'warning'
+                    });
+                }
+                return extension || extension2 && isLt2M
+            },
+            // 上传成功后的回调
+            handleAvatarSuccess(response) {
+                if(!!response[0].error){
+                    console.log("upload error");
+                }else {
+                    let urlList = response;
+                    this.fileList.push({url:urlList[0].url,name:urlList[0].name});
+                }
+            },
+            handRemove(file, fileList){
+                this.fileList = this.fileList.filter(t => t.name != file.name);
+            },
+            handlePreview(file) {
+//                console.log(file);
+            },
+        },
+
+
+    });
+    //载入数据
+    vue.loadData(vue.goods_id,vue.time,vue.status, vue.currentPage, vue.pagesize);
+    /*]]>*/
+</script>
+</body>
+</html>

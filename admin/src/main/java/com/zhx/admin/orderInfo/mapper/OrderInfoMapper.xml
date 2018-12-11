@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.admin.orderInfo.mapper.OrderInfoMapper">
+
+
+    <insert id="importHwtXshStock" parameterType="java.util.List" useGeneratedKeys="true">
+        insert into hwt_order_info
+            (
+              order_no,batch_no,client_no,org_code,ee_no,goods_id,total_price,
+              import_date,status,emp_name,product_price,num,receive_name,receive_phone,
+              receive_address,user_id,product_name,supplier_name,zipcode
+            )
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.order_no,jdbcType=VARCHAR},
+            #{item.batch_no,jdbcType=VARCHAR},
+            #{item.client_no,jdbcType=VARCHAR},
+            #{item.org_code,jdbcType=VARCHAR},
+            #{item.ee_no,jdbcType=VARCHAR},
+            #{item.goods_id,jdbcType=VARCHAR},
+            #{item.total_price,jdbcType=DECIMAL},
+            now(),
+            #{item.status,jdbcType=INTEGER},
+            #{item.emp_name,jdbcType=VARCHAR},
+            #{item.product_price,jdbcType=DECIMAL},
+            #{item.num,jdbcType=INTEGER},
+            #{item.receive_name,jdbcType=VARCHAR},
+            #{item.receive_phone,jdbcType=VARCHAR},
+            #{item.receive_address,jdbcType=VARCHAR},
+            #{item.user_id,jdbcType=VARCHAR},
+            #{item.product_name,jdbcType=VARCHAR},
+            #{item.supplier_name,jdbcType=VARCHAR},
+            #{item.zipcode,jdbcType=VARCHAR}
+            )
+        </foreach>
+    </insert>
+    <select id="selectOrderList" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        SELECT hoi.* FROM hwt_order_info hoi WHERE 1=1
+        <if test="order_no != null and order_no !=''">and hoi.order_no = #{order_no}</if>
+        <if test="batch_no != null and batch_no !=''">and hoi.batch_no = #{batch_no}</if>
+        <if test="org_code != null and org_code !=''">and hoi.org_code = #{org_code}</if>
+        <if test="ee_no != null and ee_no !=''">and hoi.ee_no = #{ee_no}</if>
+        <if test="goods_id != null and goods_id !=''">and hoi.goods_id = #{goods_id}</if>
+        <if test="status != null and status !=''">and hoi.status = #{status}</if>
+        <if test="time != null and time !=''">and  DATE_FORMAT(hoi.import_date,'%Y %m %d') &gt;=  DATE_FORMAT(#{time},'%Y %m %d')</if>
+        <if test="endtime != null and endtime !=''">and  DATE_FORMAT(hoi.import_date,'%Y %m %d') &lt;=  DATE_FORMAT(#{endtime},'%Y %m %d')</if>
+        ORDER BY import_date DESC
+    </select>
+    <select id="orderCount" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        SELECT t1.*,t2.goods_name FROM (SELECT IFNULL(SUM(hoi.total_price),0)total_price,
+        IFNULL(SUM(hoi.num),0)num,hoi.goods_id,COUNT(*) count,
+        MAX(hoi.import_date)max_date,MIN(hoi.import_date)min_date
+        from hwt_order_info hoi where 1=1
+        <if test="status != null and status !=''">and hoi.status = #{status}</if>
+        <if test="time != null and time !=''">and  DATE_FORMAT(hoi.import_date,'%Y %m %d') &gt;=  DATE_FORMAT(#{time},'%Y %m %d')</if>
+        <if test="endtime != null and endtime !=''">and  DATE_FORMAT(hoi.import_date,'%Y %m %d') &lt;=  DATE_FORMAT(#{endtime},'%Y %m %d')</if>
+        GROUP BY hoi.goods_id)t1 LEFT JOIN goods_info t2
+        ON t1.goods_id = t2.goods_id
+        ORDER BY t1.total_price DESC
+    </select>
+
+    <!-- 查询采购单位订单列表 -->
+    <select id="selectPurchaseOrgOrder" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        SELECT
+          d.id ,
+          d.org_code,
+          o.org_name AS orgName,
+          COUNT(d.id) AS orderCount ,
+          SUM(d.total_price) AS total_price,
+          SUM(d.num) AS productCount ,
+          d.status
+        FROM hwt_order_info d
+        LEFT JOIN hwt_org_info  o
+        ON o.org_code = d.org_code
+        WHERE d.org_code IS NOT NULL
+        <if test="start_time!=null and start_time!='' and end_time!=null and end_time!=''">
+            AND d.import_date BETWEEN #{start_time} AND #{end_time}
+        </if>
+        GROUP BY d.org_code
+    </select>
+
+    <!-- 确认到账 -->
+    <insert id="insertOrderAmount" parameterType="java.util.HashMap" useGeneratedKeys="true" keyProperty="id">
+        INSERT hwt_order_amount (org_code,org_name,order_amount,pay_amount,pay_account,pay_time,create_time)
+        VALUES (#{org_code},#{org_name},#{order_amount},#{pay_amount},#{pay_account},#{pay_time},now())
+    </insert>
+
+    <!-- 生成采购明细单商品信息 -->
+    <select id="selectOrderTableList" parameterType="java.util.ArrayList" resultType="java.util.HashMap">
+        SELECT
+            g.goods_name AS goodsName,
+            g.goods_id AS goodsId,
+            g.face_price AS amount,
+            SUM(h.num) AS count,
+            g.face_price AS price,
+            SUM(h.total_price) AS realAmount,
+            g.face_price * SUM(h.num) AS totalAmount,
+            CONCAT(TRUNCATE ((SUM(h.total_price) / (g.face_price * SUM(h.num)) * 100 ),2),'%') AS Discount
+        FROM hwt_order_info h,goods_info g
+        WHERE h.status = 6 AND h.goods_id = g.goods_id
+        AND h.org_code IN
+        <foreach collection="array" index="index" item="item"
+                 open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        GROUP BY h.goods_id
+    </select>
+
+    <!-- 采购单机构信息 -->
+    <select id="selectOrderOrgList" parameterType="java.util.ArrayList" resultType="java.util.HashMap">
+        SELECT
+            org_name AS orgName,
+            pay_amount AS realAmount
+        FROM
+            hwt_order_amount
+        WHERE
+            org_code IN
+        <foreach collection="array" index="index" item="item"
+                 open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        AND purchase_no IS NULL
+    </select>
+
+    <!--确认收款修改状态值-->
+    <update id="updateOrderStatusInfo" parameterType="java.util.HashMap">
+        UPDATE hwt_order_info SET status=#{status} WHERE org_code = #{org_code}
+        <if test="status==6">
+            and status =0 OR status = 1
+        </if>
+        <if test="status==7">
+            and status =6
+        </if>
+    </update>
+
+    <!--生成采购明细单修改值-->
+    <update id="updateOrderStatus">
+        UPDATE hwt_order_info SET status = 7 , purchase_no = #{orderNo} WHERE org_code IN
+        <foreach collection="orgCode" index="index" item="item"
+                 open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        AND status = 6;
+    </update>
+    <update id="updateOrderAmount" >
+        UPDATE hwt_order_amount SET purchase_no = #{orderNo} WHERE org_code IN
+        <foreach collection="orgCode" index="index" item="item"
+                 open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        AND purchase_no IS NULL
+    </update>
+
+</mapper>

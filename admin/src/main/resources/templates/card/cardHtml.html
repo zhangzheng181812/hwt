@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v-on="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <div th:replace="head"></div>
+    <title>采购明细单列表</title>
+</head>
+<body>
+<div id="html">
+    <el-table :data="tableData" style="width: 100%"
+       border :span-method="objectSpanMethod"
+        >
+        <el-table-column
+                label="编号"
+                type="index"
+                :index="indexMethod">
+        </el-table-column>
+        <el-table-column
+                prop="purchase_no"
+                label="采购单编号"
+                width="180">
+        </el-table-column>
+        <el-table-column
+                prop="org_name"
+                label="单位名称"
+                width="180">
+        </el-table-column>
+        <el-table-column
+                prop="orderCount"
+                label="笔数">
+        </el-table-column>
+        <el-table-column
+                prop="goods_name"
+                label="品名">
+        </el-table-column>
+        <el-table-column
+                prop="face_price"
+                label="面值">
+        </el-table-column>
+        <el-table-column
+                prop="numCount"
+                label="数量">
+        </el-table-column>
+        <el-table-column
+                prop="totalPrice"
+                label="总金额">
+        </el-table-column>
+        <el-table-column
+                prop="status" :formatter="formatStatus"
+                label="当前状态">
+        </el-table-column>
+        <el-table-column
+                label="操作">
+            <template scope="scope">
+                <el-button id="check" size="small" type="primary" v-if="scope.row.status == '7'"
+                           v-on:click="handleCheck(scope.$index, scope.row)">采购完成开始发货
+                </el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+    <div align="center">
+        <el-pagination
+                v-on:size-change="handleSizeChange"
+                v-on:current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="pagesize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="totalCount">
+        </el-pagination>
+    </div>
+</div>
+</body>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vue = new Vue({
+        el:'#html',
+        data() {
+            return {
+                tableData:[],
+                pagesize:10,
+                currentPage:1,
+                totalCount:10,
+                url:[[@{/cardMap/showList}]]
+            }
+        },
+        mounted(){
+            this.loadData( this.currentPage, this.pagesize);
+        },
+        methods: {
+            //从服务器读取数据
+            loadData: function ( pageNum, pageSize) {
+                var param = {
+                    "page": pageNum,"pageSize": pageSize
+                };
+                this.$http.post(this.url,  param, { emulateJSON: true }).then(function (res) {
+                    this.tableData = res.data.data.rows;
+                    this.totalCount = res.data.data.totalCount;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            //每页显示数据量变更
+            handleSizeChange: function (val) {
+                this.pagesize = val;
+                this.loadData( this.currentPage, this.pagesize);
+            },
+            //页码变更
+            handleCurrentChange: function (val) {
+                this.currentPage = val;
+                this.loadData( this.currentPage, this.pagesize);
+            },
+            indexMethod(index) {
+                return index +1;
+            },
+            //状态格式化
+            formatStatus: function (row, column) {
+                var status = row[column.property];
+                if (status == 1) {
+                    return "完成";
+                } else if (status == 7) {
+                    return "正在采购";
+                }else {
+                    return "错误";
+                }
+            },
+            handleCheck(index, row){
+                this.$http.post([[@{/cardMap/cardDelivery}]], {"purchaseNo": row.purchase_no}, { emulateJSON: true }).then(function (res) {
+                    //{"msg":"1笔订单，已发0单，其余订单商品卡数量不足，商品编号:","code":"999","errGoodsId":["10000365"]}
+                    if(res.data.code != '000'){
+                        this.$alert(res.data.msg + res.data.errGoodsId, '提示', {
+                            confirmButtonText: '确定',
+                            type: 'error',
+                        });
+                    }else{
+                        this.loadData( this.currentPage, this.pagesize);
+                    }
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            objectSpanMethod({ row, column, rowIndex, columnIndex }) {
+                if (columnIndex === 1 || columnIndex === 8|| columnIndex ===9) {
+                    var rowSpan = 0;
+                    for (var i = 0; i < this.tableData.length; i++) {
+                        if (row.purchase_no == this.tableData[i].purchase_no) {
+                            rowSpan++;
+                        }
+                    }
+                    //第一行
+                    if (rowIndex === 0) {
+                        return {
+                            rowspan: rowSpan,
+                            colspan: 1
+                        };
+                    } else {
+                        if (row.purchase_no != this.tableData[rowIndex - 1].purchase_no) {
+                            return {
+                                rowspan: rowSpan,
+                                colspan: 1
+                            };
+                        } else {
+                            return {
+                                rowspan: 0,
+                                colspan: 0
+                            };
+                        }
+                    }
+                }else if(columnIndex === 2 ){
+                    var rowSpan = 0;
+                    for (var i = 0; i < this.tableData.length; i++) {
+                        if (row.org_code == this.tableData[i].org_code &&  row.purchase_no == this.tableData[i].purchase_no) {
+                            rowSpan++;
+                        }
+                    }
+                    //第一行
+                    if (rowIndex === 0) {
+                        return {
+                            rowspan: rowSpan,
+                            colspan: 1
+                        };
+                    } else {
+                        if (row.org_code != this.tableData[rowIndex - 1].org_code &&  row.purchase_no == this.tableData[i].purchase_no) {
+                            return {
+                                rowspan: rowSpan,
+                                colspan: 1
+                            };
+                        } else {
+                            return {
+                                rowspan: 0,
+                                colspan: 0
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    })
+    /*]]>*/
+</script>
+</html>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.hwtcommon.common.mapper.CommonMapper">
+
+
+
+    <!-- 生产流水号 -->
+    <insert id="buildOrderNo" useGeneratedKeys="true" keyProperty="genOrderNo" parameterType="java.util.HashMap">
+        insert into osc_buildorderno () values()
+    </insert>
+    <!-- 加入访问外部接口日志 -->
+    <insert id="invokerLog" parameterType="java.util.HashMap">
+        insert into external_interface_log
+        (
+        request_url,
+        request_parameter,
+        request_time,
+        response_parameter,
+        response_time,
+        invoker_ip,
+        invoker_request_parameter,
+        invoker_response_parameter,
+        server_ip,
+        create_date,
+        log_type
+        )
+        values
+        (
+        #{request_url},
+        #{request_parameter},
+        #{request_time},
+        #{response_parameter},
+        #{response_time},
+        #{invoker_ip},
+        #{invoker_request_parameter},
+        #{invoker_response_parameter},
+        #{server_ip},
+        now(),
+        #{log_type}
+        )
+    </insert>
+    <!--  insert app_log 插入App日志-->
+    <insert id="insertAppLog" parameterType="com.zhx.hwtcommon.common.config.AppLog" useGeneratedKeys="true" keyProperty="id">
+        insert into app_log
+        (queryid,interface_name,request_str,requestip,request_time,response_str,response_ip,response_time,os,deviceid,mac,phone_model,ip,phone_no,imei,android_id,user_id,openid,reqsource,token)
+        values(#{queryid},#{interfaceName},#{requestStr},#{requestIp},#{requestTime},#{responseStr},#{responseIp},#{responseTime},
+        <choose>
+            <when test="os!=null">
+                #{os}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="deviceid!=null">
+                #{deviceid}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="mac!=null">
+                #{mac}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="phoneModel!=null">
+                #{phoneModel}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="ip!=null">
+                #{ip}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="phoneNo!=null">
+                #{phoneNo}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="imei!=null">
+                #{imei}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="androidId!=null">
+                #{androidId}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="userId!=null">
+                #{userId}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="openid!=null">
+                #{openid}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="reqSource!=null">
+                #{reqSource}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        ,
+        <choose>
+            <when test="token!=null">
+                #{token}
+            </when>
+            <otherwise>
+                ''
+            </otherwise>
+        </choose>
+        )
+        <selectKey resultType="java.lang.Integer" order="AFTER" keyProperty="id">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    <!-- 保存admin项目Request日志 -->
+    <insert id="insertAdminRequestLog" parameterType="java.util.HashMap">
+        insert into bg_request_log (request_path,request_key,user_id,user_name,login_unit_no,unit_no,params,request_ip,
+        request_date,login_unit_id,login_unit_name )
+        values(#{request_path},#{request_key},#{user_id},#{user_name},#{login_unit_no},#{unit_no},#{params},#{request_ip},
+        now(),#{login_unit_id},#{login_unit_name})
+    </insert>
+</mapper>

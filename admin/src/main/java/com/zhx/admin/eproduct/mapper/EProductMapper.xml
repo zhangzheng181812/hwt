@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.admin.eproduct.mapper.EProductMapper">
+
+    <select id="selStockLogList" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        select id,input_no,sup_out_no,sup_id,cateid,amount,buy_count,totalamount,
+        DATE_FORMAT(expire_time,'%Y-%m-%d %H:%i:%s') expire_time,create_id,DATE_FORMAT(in_date,'%Y-%m-%d %H:%i:%s') in_date,
+        payment_type,is_pay,face_price
+        from hwt_xshe_stock_log where 1=1
+        <if test="cateid != null and cateid !=''">
+            and cateid = #{cateid}
+        </if>
+        order by id desc
+    </select>
+
+    <insert id="insStockLog" parameterType="java.util.HashMap">
+        insert into hwt_xshe_stock_log(input_no,sup_out_no,sup_id,cateid,amount,buy_count,totalamount,expire_time,create_id,in_date,payment_type,is_pay,face_price)
+        values(#{input_no},#{sup_out_no},#{sup_id},#{cateid},#{amount},#{buy_count},#{totalamount},#{expire_time},#{create_id},now(),#{payment_type},#{is_pay},#{face_price})
+    </insert>
+
+    <update id="updateStockLog" parameterType="java.util.HashMap">
+        update hwt_xshe_stock_log set input_no = #{input_no},
+                sup_out_no = #{sup_out_no},
+                sup_id = #{sup_id},
+                cateid = #{cateid},
+                amount = #{amount},
+                buy_count = #{buy_count},
+                totalamount = #{totalamount},
+                expire_time = #{expire_time},
+                create_id = #{create_id},
+                payment_type = #{payment_type},
+                is_pay = #{is_pay},
+                face_price = #{face_price}
+        where id = #{id}
+    </update>
+
+    <select id="selStockLogById" parameterType="java.lang.String" resultType="java.util.HashMap">
+        select id,input_no,sup_out_no,sup_id,cateid,amount,buy_count,totalamount,
+        DATE_FORMAT(expire_time,'%Y-%m-%d %H:%i:%s') expire_time,create_id,DATE_FORMAT(in_date,'%Y-%m-%d %H:%i:%s') in_date,
+        payment_type,is_pay,face_price
+        from hwt_xshe_stock_log where id = #{id}
+    </select>
+
+    <insert id="insHwtXshStock" parameterType="java.util.List">
+        insert into hwt_xshe_stock(cateid,card_no,e_code_no,status,input_no,sid,expire_time,value_amount,log_date,comments,start_time)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.cateid,jdbcType=VARCHAR},
+            #{item.card_no,jdbcType=VARCHAR},
+            #{item.e_code_no,jdbcType=VARCHAR},
+            #{item.status,jdbcType=VARCHAR},
+            #{item.input_no,jdbcType=VARCHAR},
+            #{item.sid,jdbcType=VARCHAR},
+            #{item.expire_time,jdbcType=DATE},
+            #{item.value_amount,jdbcType=DECIMAL},
+            now(),
+            #{item.comments,jdbcType=VARCHAR},
+            #{item.start_time,jdbcType=DATE}
+            )
+        </foreach>
+    </insert>
+   <!--查询产品详情-->
+    <select id="selGoodsDetail" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        select gd.id,gd.goods_id,gd.topic,gd.content,gd.status,gd.create_time,ifnull(gd.pic_list,'')pic_list,
+        gd.creater,gd.orderby,goods_info.goods_name
+        from hwt_goods_detail gd   LEFT JOIN  goods_info on  gd.goods_id= goods_info.goods_id
+        where 1=1
+        <if test="goods_id != null">
+            and  gd.goods_id=#{goods_id}
+        </if>
+        <if test="status != null">
+            and  gd.status=#{status}
+        </if>
+        <if test="create_time != null">
+            and  gd.create_time like concat(#{create_time},'%')
+        </if>
+        ORDER  by  gd.create_time  desc
+    </select>
+
+    <update id="updateGoodsDetail" parameterType="java.util.HashMap">
+        update  hwt_goods_detail set
+        topic=#{topic},
+        content=#{content},
+        status=#{status},
+        orderby=#{orderby},
+        pic_list=#{pic_list}
+        where id=#{id}
+    </update>
+
+    <insert id="insGoodsDetail" parameterType="java.util.HashMap">
+        insert into hwt_goods_detail ( goods_id,topic,content,status,create_time,orderby,pic_list)
+        values( #{goods_id},#{topic},#{content},#{status},now(),#{orderby},#{pic_list})
+    </insert>
+    <select id="selGoodsInfoId" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        select goods_id,goods_name from goods_info where status=#{status}
+    </select>
+
+    <update id="updateGoodsDetailStatus" parameterType="java.util.HashMap">
+        UPDATE hwt_goods_detail SET
+        status = #{status}
+        where id = #{id}
+    </update>
+</mapper>

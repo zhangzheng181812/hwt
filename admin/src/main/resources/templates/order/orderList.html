@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>订单详情信息列表</title>
+    <div th:replace="head"></div>
+    <style>
+        .el-select {
+            width: 140px;
+        }
+        .el-dialog__footer{
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="demo">
+    <div class="classify-company-c">
+        <span style="margin-left: 16px;">订单编号:</span>
+       <el-input style="width:10em" type="text" v-model="order_no"></el-input>
+        <span style="margin-left: 16px;">批次编号:</span>
+        <el-input style="width:10em" type="text" v-model="batch_no"></el-input>
+        <span style="margin-left: 16px;">公司编号:</span>
+        <el-input style="width:10em" type="text" v-model="org_code"></el-input>
+        <span style="margin-left: 16px;">员工编号:</span>
+        <el-input style="width:10em" type="text" v-model="ee_no"></el-input>
+        <br>
+        <span style="margin-left: 16px;">商品编号:</span>
+        <el-input style="width:10em" type="text" v-model="goods_id"></el-input>
+         <span style="margin-left: 16px;">开始时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="time"></el-date-picker>
+        <span style="margin-left: 16px;">结束时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="endtime"></el-date-picker>
+        <span style="margin-left: 16px;">订单状态:</span>
+        <el-select v-model="status">
+            <el-option v-for="drug in drugs"  :key="drug.status"  :label="drug.statusName" :value="drug.status" ></el-option>
+        </el-select>
+        <el-button type="primary" name="button" v-on:click="search">查询</el-button>
+        <el-button type="primary" name="button" v-on:click="importExcel">导入</el-button>
+        <el-button type="primary" name="button" v-on:click="sendGoods">发货</el-button>
+    </div>
+    <div style="margin-top:15px">
+        <el-table
+                ref="testTable"
+                :data="tableData"
+                stripe
+                style="width:100%"
+                border
+                highlight-current-row
+                v-on:row-dblclick="handleMousedblclick">
+            <el-table-column prop="id" width="70" label="流水号" ></el-table-column>
+            <el-table-column prop="order_no"  label="订单编号" ></el-table-column>
+            <el-table-column prop="batch_no"  label="批次编号" ></el-table-column>
+            <el-table-column prop="org_code"  label="公司编号" ></el-table-column>
+            <el-table-column prop="ee_no" label="员工编号" ></el-table-column>
+            <el-table-column prop="goods_id"  label="商品编号" ></el-table-column>
+            <el-table-column prop="product_name"  label="商品名称" ></el-table-column>
+            <el-table-column prop="product_price"  label="商品单价(元)" ></el-table-column>
+            <el-table-column prop="num"  label="数量" ></el-table-column>
+            <el-table-column prop="total_price"  label="总价(元)" ></el-table-column>
+            <el-table-column prop="receive_name"  label="收件人" ></el-table-column>
+            <el-table-column prop="receive_phone"  label="收件人手机号" ></el-table-column>
+            <el-table-column  prop="status"  :formatter="formatStatus"  label="状态" ></el-table-column>
+            <el-table-column  prop="ship_date"  :formatter="dateFormat"  label="发货时间" ></el-table-column>
+            <el-table-column prop="import_date"  :formatter="dateFormat" label="导入时间" />
+        </el-table>
+        <div align="center">
+            <el-pagination
+                    v-on:size-change="handleSizeChange"
+                    v-on:current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pagesize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </div>
+    </div>
+    <el-dialog title="导入订单" :visible.sync="dialogFormVisible" width="600px;"
+               :close-on-press-escape="showClose" :show-close="showClose" :close-on-click-modal="showClose">
+        <el-form ref="form" label-width="100px" :label-position="'right'" :rules="rules" class="demo-ruleForm" :model="ruleForm">
+            <el-form-item label="订单文件:" prop="productFile" ref="productFileRef">
+                <input type="file" v-model="ruleForm.productFile"  style="width: 202px;border: 1px solid #dcdfe6;border-radius: 4px" v-on:change="getFile($event)" />
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" v-on:click="cancelDia('form')" >取消</el-button>
+            <el-button type="primary" v-on:click="submitFile('form')" :loading="loading">导入订单</el-button>
+        </div>
+    </el-dialog>
+    <el-dialog title="订单发货" :visible.sync="dialogFormVisible2" width="600px;"
+               :close-on-press-escape="showClose" :show-close="showClose" :close-on-click-modal="showClose">
+        <el-form ref="form2" label-width="100px" :label-position="'right'" :rules="rules" class="demo-ruleForm" :model="ruleForm">
+            <el-form-item label="批次编号:" prop="batch_no" >
+                <el-input style="width:10em" v-model="ruleForm.batch_no"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" v-on:click="cancelDia('form2')" >取消</el-button>
+            <el-button type="primary" v-on:click="submitSend('form2')" >确定</el-button>
+        </div>
+    </el-dialog>
+    <!--<el-dialog
+            title="未成功导入信息:"
+            :visible.sync="cardVisible"
+            width="32%">
+        <div v-for="o in failSale" class="text item">
+            {{'作品ID:' + o.worksId+' 原因:'+o.msg}}
+        </div>
+        <span>
+            <el-button type="primary" v-on:click="cardVisible = false">确 认</el-button>
+         </span>
+    </el-dialog>-->
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vm = new Vue({
+        el: "#demo",
+        data: {
+           /* failSale: [],
+            cardVisible: false,*/
+            rules:{
+                productFile: [
+                    {required: true, message: '请选择订单文件', trigger: 'blur,change'}
+                ],
+                batch_no: [
+                    {required: true, message: '请输入批次编号', trigger: 'blur,change'}
+                ],
+            },
+            ruleForm:{
+                productFile:'',
+                batch_no:'',
+            },
+            dialogFormVisible:false,
+            dialogFormVisible2:false,
+            productFile:"",
+            showClose:false,
+            loading:false,
+            tableData:[],
+            order_no: '',
+            batch_no: '',
+            org_code: '',
+            ee_no: '',
+            goods_id: '',
+            time:'',
+            endtime:'',
+            status:'',
+            drugs:[{status:"",statusName:'全部'},{status:"0",statusName:'未处理'},{status:"1",statusName:'已发货'},{status:"2",statusName:'发货失败'}],
+            criteria:'',
+            //默认每页数据量
+            pagesize: 10,
+            //默认高亮行数据id
+            highlightId: -1,
+            //当前页码
+            currentPage: 1,
+            //查询的页码
+            start: 1,
+            //默认数据总数
+            totalCount: 1,
+        },
+        methods:{
+            cancelDia:function(form){
+                this.dialogFormVisible=false;
+                this.dialogFormVisible2=false;
+                //清空数据
+                console.log(this.$refs[form])
+                this.$refs[form].resetFields();
+                this.ruleForm.productFile = '';
+                this.ruleForm.batch_no = '';
+                this.productFile = '';
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            getFile:function (event) {
+                this.clearValidate('productFileRef');
+                this.productFile = event.target.files[0];
+            },
+            clearValidate(formName) {
+                this.$refs[formName].clearValidate();
+            },
+            search(){
+                let criteria ={order_no:this.order_no,batch_no:this.batch_no,time:this.time,endtime:this.endtime,status:this.status,
+                    org_code:this.org_code,ee_no:this.ee_no,goods_id:this.goods_id};
+                 this.criteria =JSON.stringify(criteria);
+                this.loadData(this.criteria,this.currentPage,this.pagesize)
+            },
+            importExcel(){
+                this.dialogFormVisible=true;
+            },
+            sendGoods(){
+                this.dialogFormVisible2=true;
+            },
+            //从服务器读取数据
+            loadData: function (criteria, pageNum, pageSize) {
+                var param = {
+                 "param": criteria, "page": pageNum,"pageSize": pageSize
+                 };
+                 this.$http.post([[@{/order/selectOrderList}]],  param, { emulateJSON: true }).then(function (res) {
+                 this.tableData = res.data.data.rows;
+                 this.totalCount = res.data.data.totalCount;
+                 }, function () {
+                    console.log('failed');
+                 });
+            },
+            handleSizeChange:function(val){
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleCurrentChange:function(val){
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleMousedblclick(row,column){
+
+            },
+            //时间格式化
+            dateFormat: function (row, column) {
+                var date = row[column.property];
+                if (date == undefined) {
+                    return "";
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss");//导入moment.js
+            },
+            //状态格式化
+            formatStatus: function (row, column) {
+                var status = row[column.property];
+                if (status == 1) {
+                    return "已发货";
+                } else if (status == 0) {
+                    return "未处理";
+                }else if (status == 2) {
+                    return "发货失败";
+                }else {
+                    return "未知";
+                }
+            },
+            submitFile:function(form) {
+                this.$refs['form'].validate((valid) => {
+                    if(valid){
+                        this.loading = true;
+                        event.preventDefault();
+                        let formData = new FormData();
+                        formData.append('productFile', this.productFile);
+                        let config = {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        }
+                        this.$http.post([[@{/order/importOrder}]],formData,config).then(
+                                (response)=> {
+                                    this.loading = false;
+                                    if (response.data.returncode == '000') {
+                                        this.$alert('恭喜你，导入成功', '提示', {
+                                            confirmButtonText: '确定',
+                                            type: 'success',
+                                        });
+                                        this.cancelDia(form);
+                                    } else {
+                                        this.$alert(response.data.msg, '提示', {
+                                            confirmButtonText: '确定',
+                                            type: 'error',
+                                        });
+                                    }
+                                }
+                        )
+                    }
+                });
+            },
+            submitSend:function (form) {
+                this.$refs[form].validate((valid) => {
+                    if(valid){
+                        let param = { batch: this.ruleForm.batch_no}
+                        this.$http.post([[@{/cardMap/cardDelivery}]],param, { emulateJSON: true }).then(
+                                (response)=> {
+                                    this.loading = false;
+                                    if (response.data.code == '000') {
+                                        this.$alert('恭喜你，发货成功'+response.data.msg , '提示', {
+                                            confirmButtonText: '确定',
+                                            type: 'success',
+                                        });
+                                        this.cancelDia(form);
+                                    } else  if (response.data.code == '909'){
+                                        this.$alert('请确认订单批次是否有效', '提示', {
+                                            confirmButtonText: '确定',
+                                            type: 'error',
+                                        });
+                                    }else  if (response.data.code == '999'){
+                                        this.$alert(response.data.msg + response.data.errGoodsId, '提示', {
+                                            confirmButtonText: '确定',
+                                            type: 'error',
+                                        });
+                                    }
+                                }
+                        )
+                    }
+                });
+            },
+        },
+    })
+    vm.loadData(vm.criteria, vm.currentPage, vm.pagesize);
+    /*]]>*/
+</script>
+</body>
+</html>

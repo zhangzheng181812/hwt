@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v-on="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <div th:replace="head"></div>
+    <title>商品码进货单</title>
+</head>
+<body>
+<div id="divPage">
+    <div style="text-align: right;">
+        <b style="float: left">商品码进货单</b>
+        产品编码：<el-input style="width:10em"  v-model="criteria"></el-input>
+        &nbsp;&nbsp;&nbsp;
+        <el-button type="success" v-on:click="onSelect">查询</el-button>&nbsp;&nbsp;&nbsp;
+        <el-button type="primary" plain v-on:click="onAdd">新建</el-button>
+    </div>
+
+    <el-table :data="dataJson" heigth="250" style="width: 100%"
+              v-on:row-dblclick="handleDoubleClick"
+              border
+              highlight-current-row ref="list">
+        <div>
+            <el-table-column label="操作" min-width="40" align="center">
+                <template slot-scope="scope">
+                    <el-button id="edit" size="small" type="primary"
+                               v-on:click="onUpdate(scope.row)">修改
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="cateid" label="供货商产品编号" min-width="70" align="center"></el-table-column>
+            <el-table-column prop="face_price" label="面值" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="amount" label="进货价" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="buy_count" label="采购数量" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="input_no" label="进货单号" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="sup_out_no" label="供货商发货单号" min-width="70" align="center"></el-table-column>
+            <el-table-column prop="expire_time" label="到期时间" min-width="35" align="center"></el-table-column>
+            <el-table-column prop="create_id" label="操作人" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="in_date" label="入库时间" min-width="35" align="center"></el-table-column>
+            <el-table-column prop="payment_type" label="付款方式" min-width="40" align="center"></el-table-column>
+            <el-table-column prop="is_pay" label="是否付款" min-width="40" align="center" :formatter="formatter"></el-table-column>
+        </div>
+    </el-table>
+
+    <div class="block" align="center">
+        <el-pagination
+                v-on:size-change="handleSizeChange"
+                v-on:current-change="handleCurrentChange"
+                :current-page="page"
+                :page-sizes="[10, 30, 50, 100]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+        </el-pagination>
+    </div>
+    <el-dialog title="商品码进货单设置" :visible.sync="dialogFormVisible" width="500px;" :close-on-click-modal="showClose" :close-on-press-escape="showClose" :show-close="showClose">
+        <el-form ref="form" label-width="125px" :rules="rules" :model="ruleForm" label-suffix=":">
+            <el-input v-model="ruleForm.id" type="hidden"></el-input>
+            <el-form-item label="进货单号" prop="input_no">
+                <el-input v-model="ruleForm.input_no"></el-input>
+            </el-form-item>
+            <el-form-item label="供货商发货单号" prop="sup_out_no">
+                <el-input v-model="ruleForm.sup_out_no"></el-input>
+            </el-form-item>
+            <el-form-item label="供货商编号" prop="sup_id">
+                <el-select v-model="ruleForm.sup_id" placeholder="请选择供货商编号">
+                    <el-option
+                            v-for="item in options1"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="供货商产品编号" prop="cateid">
+                <el-input v-model="ruleForm.cateid"></el-input>
+            </el-form-item>
+            <el-form-item label="面值" prop="face_price">
+                <el-input v-model="ruleForm.face_price"></el-input>
+            </el-form-item>
+            <el-form-item label="进货价" prop="amount">
+                <el-input v-model="ruleForm.amount"></el-input>
+            </el-form-item>
+            <el-form-item label="采购数量" prop="buy_count">
+                <el-input v-model="ruleForm.buy_count"></el-input>
+            </el-form-item>
+            <el-form-item label="操作员" prop="create_id">
+                <el-input v-model="ruleForm.create_id"></el-input>
+            </el-form-item>
+            <el-form-item label="总价" prop="totalamount">
+                <el-input v-model="ruleForm.amount * ruleForm.buy_count" readOnly="readOnly" style="width: 217px;"></el-input>(由进货价×采购数量自动获得，不用手动输入)
+            </el-form-item>
+            <el-form-item label="到期时间" prop="expire_time">
+                <el-date-picker
+                        v-model="ruleForm.expire_time"
+                        type="datetime"
+                        value-format="yyyy-MM-dd HH:mm:ss"
+                        placeholder="选择日期时间">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="付款方式" prop="payment_type">
+                <el-select v-model="ruleForm.payment_type" placeholder="请选择付款方式">
+                    <el-option
+                            v-for="item in options"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="是否付款" prop="is_pay">
+                <el-radio-group v-model="ruleForm.is_pay">
+                    <el-radio :label="0">否</el-radio>
+                    <el-radio :label="1">是</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button v-on:click="dialogFormVisible = false">取 消</el-button>
+            <el-button type="primary" v-on:click="submitInfo()">确 定</el-button>
+        </div>
+    </el-dialog>
+</div>
+</body>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vue = new Vue({
+        el: '#divPage',
+        data(){
+            return {
+                dialogFormVisible : false,
+                showClose : false,
+                dataJson: [],
+                pageSize: 10,
+                page: 1,
+                total: 10,
+                criteria: '',
+                options: [{
+                    value: '汇款',
+                    label: '汇款'
+                },{
+                    value: '货款',
+                    label: '货款'
+                },{
+                    value: '转账',
+                    label: '转账'
+                },{
+                    value: '支票',
+                    label: '支票'
+                }],
+                options1: [{
+                    value: '1001',
+                    label: '1001---资和信分销平台'
+                }],
+                rules:{
+                    input_no:[
+                        {required: true, message: '请输入进货单号' ,trigger: 'blur,change'}
+                    ],
+                    sup_out_no:[
+                        {required: true, message: '请输入供货商发货单号' ,trigger: 'blur,change'}
+                    ],
+                    sup_id:[
+                        {required: true, message: '请选择供货商编号' ,trigger: 'blur,change'}
+                    ],
+                    cateid:[
+                        {required: true, message: '请输入供货商产品编号' ,trigger: 'blur,change'}
+                    ],
+                    face_price:[
+                        {required: true, message: '请输入面值' ,trigger: 'blur,change'},
+                        {pattern: /^(0|[1-9][0-9]*)+(\.\d{1,2})?$/, message: '请输入数字', trigger: 'blur,change'}
+                    ],
+                    amount:[
+                        {required: true, message: '请输入进货价' ,trigger: 'blur,change'},
+                        {pattern: /^(0|[1-9][0-9]*)+(\.\d{1,2})?$/, message: '请输入数字', trigger: 'blur,change'}
+                    ],
+                    buy_count:[
+                        {required: true, message: '请输入采购数量' ,trigger: 'blur,change'},
+                        {pattern: /^[1-9][0-9]*$/, message: '请输入正整数', trigger: 'blur,change'}
+                    ],
+                    create_id:[
+                        {required: true, message: '请输入操作员' ,trigger: 'blur,change'}
+                    ],
+                    // totalamount:[
+                    //     {required: true, message: '请计算出总价' ,trigger: 'blur,change'}
+                    // ],
+                    expire_time:[
+                        {required: true, message: '请选择到期时间' ,trigger: 'blur,change'}
+                    ],
+                    payment_type:[
+                        {required: true, message: '请选择付款方式' ,trigger: 'blur,change'}
+                    ],
+                    is_pay:[
+                        {required: true, message: '请选择是否付款' ,trigger: 'blur,change'}
+                    ]
+                },
+                ruleForm:{
+                    is_pay:0
+                },
+                title:"",
+                submitURL:""
+            }
+        },
+        mounted(){
+            this.showTable(this.page,this.pageSize)
+        },
+        methods: {
+            //每页显示数据量变更
+            handleSizeChange(val) {
+                this.pageSize = val;
+                this.showTable(this.page, this.pageSize);
+            },
+            //页码变更
+            handleCurrentChange (val) {
+                this.page = val;
+                this.showTable(this.page, this.pageSize);
+            },
+            // table list
+            showTable(page, pageSize){
+                var cateid = this.criteria.toString();
+                var param = {
+                    "cateid": cateid,"page": page,"pageSize": pageSize
+                };
+                this.$http.post([[@{/eProduct/stockLogList}]],param, { emulateJSON: true }).then(
+                    (response) => {
+                    vue.dataJson = response.data.data.rows;
+                    vue.total = response.data.data.totalCount;
+                })
+            },
+            formatter(row, column){
+                if (row.is_pay == '1') {
+                    return "付款";
+                }else if(row.is_pay == '0'){
+                    return "否";
+                }
+            },
+            onSelect(){
+                this.showTable(this.page, this.pageSize);
+            },
+            onAdd(){
+                //重置表单
+                if(this.$refs["form"]!=''&& this.$refs["form"]!=null&&this.$refs["form"]!='undefined'){
+                    this.$refs["form"].resetFields();
+                }
+                this.ruleForm = {
+                    is_pay:0
+                };
+                this.dialogFormVisible=true;
+            },
+            submitInfo(){
+                this.$refs['form'].validate((valid) => {
+                    if(valid){
+                        let row = this.ruleForm;
+                        let rowId =  row.id;
+                        if(rowId == null || rowId == undefined){
+                            rowId = "";
+                        }
+                        var param = {
+                            'id': rowId,
+                            'input_no': row.input_no,
+                            "sup_out_no": row.sup_out_no,
+                            "sup_id": row.sup_id,
+                            "cateid": row.cateid,
+                            "face_price": row.face_price,
+                            "amount": row.amount,
+                            "buy_count": row.buy_count,
+                            "create_id": row.create_id,
+                            "totalamount": row.totalamount,
+                            "expire_time": row.expire_time.toString(),
+                            "payment_type": row.payment_type,
+                            "is_pay": row.is_pay
+                        };
+                        this.$http.post([[@{/eProduct/submitStockLogList}]], param, {emulateJSON: true}).then(function (res) {
+                            let msg = res.data.msg;
+                            let code = res.data.code;
+                            this.open(msg, code)
+                        }, function () {
+                            console.log('failed');
+                        });
+                    }
+                });
+            },
+            //提示信息
+            open: function (msg, code) {
+                if (code == '000') {
+                    this.$alert(msg, '提示', {
+                        confirmButtonText: '确定',
+                        type: 'success',
+                        callback: action => {
+                        this.dialogFormVisible = false;
+                        location.reload();
+                }
+                });
+                } else {
+                    this.$alert(msg, '提示', {
+                        confirmButtonText: '确定',
+                        type: 'error',
+                    });
+                }
+            },
+            //双击表格
+            handleDoubleClick(row, event){
+                this.onUpdate(row);
+            },
+            onUpdate(row){
+                //重置表单
+                if(this.$refs["form"]!=''&& this.$refs["form"]!=null&&this.$refs["form"]!='undefined'){
+                    this.$refs["form"].resetFields();
+                }
+                //显示弹窗
+                this.dialogFormVisible = true;
+                var param = {"id": row.id};
+                this.$http.post([[@{/eProduct/getStockLogById}]], param, {emulateJSON: true}).then(function (res) {
+                    this.ruleForm = res.data.data;
+                    let is_pay = this.ruleForm.is_pay;
+                    this.ruleForm.is_pay = parseInt(is_pay);
+                }, function () {
+                    console.log('failed');
+                });
+
+            }
+
+
+
+        }
+    })
+    /*]]>*/
+</script>
+</html>

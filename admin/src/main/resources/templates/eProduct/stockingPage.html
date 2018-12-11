@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v-on="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <div th:replace="head"></div>
+    <title>电子码产品导入库存</title>
+    <style>
+        .el-input__inner {
+            -webkit-appearance: none;
+            background-color: #fff;
+            border-radius: 4px;
+            border: 1px solid #dcdfe6;
+            box-sizing: border-box;
+            color: #606266;
+            display: inline-block;
+            font-size: inherit;
+            height: 27px;
+            line-height: 1;
+            outline: 0;
+            padding: 0;
+            -webkit-transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+            transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+            width: 100%;
+        }
+        .el-button {
+            display: inline-block;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+            background: #fff;
+            border: 1px solid #dcdfe6;
+            color: #606266;
+            -webkit-appearance: none;
+            text-align: center;
+            -webkit-box-sizing: border-box;
+            box-sizing: border-box;
+            outline: 0;
+            margin: 0;
+            -webkit-transition: .1s;
+            transition: .1s;
+            font-weight: 500;
+            padding: 5px 10px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div id="stockingPage">
+        <el-form style="padding-left:200px;padding-top:100px" ref="form" label-width="125px" label-suffix=":" :rules="rules" :model="ruleForm">
+            <el-form-item label="供货商" prop="suppliers">
+                <el-select v-model="ruleForm.suppliers" placeholder="请选择供货商">
+                    <el-option
+                            v-for="item in options"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="上货数量" prop="num">
+                <el-input v-model="ruleForm.num" style="width: 202px"></el-input>
+            </el-form-item>
+            <el-form-item label="选择库存文件" prop="productFile" ref="productFileRef">
+                <input type="file" v-model="ruleForm.productFile"  style="width: 202px;border: 1px solid #dcdfe6;border-radius: 4px" v-on:change="getFile($event)" />
+            </el-form-item>
+            <el-form-item label="平台进货单号" prop="inputNo">
+                <el-input v-model="ruleForm.inputNo" style="width: 202px"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" style="padding-left: 448px">
+            <el-button type="primary" v-on:click="submitForm()" :loading="loading">导入产品</el-button>
+        </div>
+</div>
+</body>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vue = new Vue({
+        el: '#stockingPage',
+        data(){
+            return {
+                options: [{
+                    value: '1001',
+                    label: '1001---资和信分销平台'
+                }],
+                rules:{
+                    suppliers: [
+                        {required: true, message: '请选择供货商', trigger: 'blur,change'}
+                    ],
+                    num: [
+                        {required: true, message: '请输入上货数量', trigger: 'blur,change'},
+                        {pattern: /^[1-9][0-9]*$/, message: '请输入正整数', trigger: 'blur,change'}
+                    ],
+                    productFile: [
+                        {required: true, message: '请选择库存文件', trigger: 'blur,change'}
+                    ],
+                    inputNo: [
+                        {required: true, message: '请输入平台进货单号', trigger: 'blur,change'}
+                    ],
+                },
+                ruleForm:{
+
+                },
+                productFile:"",
+                loading:false
+
+            }
+        },
+        mounted(){
+
+        },
+        methods: {
+            getFile:function (event) {
+                //this.$refs['form'].clearValidate();
+                this.clearValidate('productFileRef');
+                this.productFile = event.target.files[0];
+                console.log(this.productFile);
+            },
+            clearValidate(formName) {
+                this.$refs[formName].clearValidate();
+            },
+            submitForm:function() {
+                this.$refs['form'].validate((valid) => {
+                    if(valid){
+                        this.loading = true;
+                        event.preventDefault();
+                        let formData = new FormData();
+                        formData.append('suppliers', this.ruleForm.suppliers);
+                        formData.append('num', this.ruleForm.num);
+                        formData.append('productFile', this.productFile);
+                        formData.append('inputNo', this.ruleForm.inputNo);
+                        let config = {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        }
+                        this.$http.post([[@{/eProduct/loadProductDate}]],formData,config).then(
+                            (response)=> {
+                            //console.log(response.data);
+                            this.loading = false;
+                            if (response.data.returncode == '000') {
+                                // this.$message({
+                                //     message: '恭喜你，导入成功',
+                                //     type: 'success'
+                                // });
+                                this.$alert('恭喜你，导入成功', '提示', {
+                                    confirmButtonText: '确定',
+                                    type: 'success',
+                                });
+                            } else {
+                                // this.$message({
+                                //     message: response.data.msg,
+                                //     type: 'error'
+                                // });
+                                this.$alert(response.data.msg, '提示', {
+                                    confirmButtonText: '确定',
+                                    type: 'error',
+                                });
+                            }
+                        }
+                    )
+
+                    }
+                });
+            }
+
+
+
+        }
+    })
+    /*]]>*/
+</script>
+</html>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.admin.card.mapper.CardMapper">
+
+    <select id="showCardList" parameterType="java.lang.String" resultType="java.util.HashMap">
+         select purchase_no , org_code ,(select org_name from hwt_org_info where org_code =t.org_code )org_name, sum(1) orderCount ,sum(num) numCount ,g.goods_id ,g.goods_name ,g.face_price
+         ,max(t.status) status,
+         sum(total_price) totalPrice from hwt_order_info t , goods_info g
+         where t.goods_id =g.goods_id and t.status in (7,1)  and org_code != '' and purchase_no !=''
+         group by purchase_no ,goods_id ,t.status order by t.status desc
+    </select>
+
+
+    <select id="selOrderList" parameterType="java.lang.String" resultType="java.util.HashMap">
+        select * from hwt_order_info where purchase_no =#{purchaseNo} and status =7
+    </select>
+    <select id="selGoodsCateid" parameterType="java.lang.String" resultType="java.lang.String">
+        select cateid from hwt_goods_stock where goods_id =#{goodsId} and status =1
+    </select>
+
+    <select id="selCateList" parameterType="java.lang.String" resultType="java.util.HashMap">
+        select * from hwt_xshe_stock where cateid =#{cateId} and status ='04'
+    </select>
+
+    <insert id="insCardByorder" parameterType="java.util.HashMap">
+        insert into hwt_order_card (order_no,goods_id,card_no,pwd,status ,create_time,cateid,ee_no,org_code,expire_time)
+        VALUES (
+          #{order_no},#{goods_id},#{card_no},#{pwd},#{status},now(),#{cateid},#{ee_no},#{org_code},#{expire_time}
+        )
+    </insert>
+    <update id="updCardStatus" parameterType="java.lang.String">
+        update hwt_xshe_stock set status ='06' where id =#{id} and status ='04'
+    </update>
+
+    <update id="updOrderStatus" parameterType="java.lang.String">
+        update hwt_order_info set status ='1' where order_no =#{order_no} and status ='0'
+    </update>
+
+</mapper>    

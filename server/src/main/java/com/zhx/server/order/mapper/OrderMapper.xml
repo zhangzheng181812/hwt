@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.server.order.mapper.OrderMapper">
+
+    <select id="selOrderByEE" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+        select * from hwt_order_info where ee_no =#{eeNo} and order_no = #{orderNo} and org_code =#{orgCode}
+          and status =1
+    </select>
+
+
+    <select id="selOrderCardList" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+          select card_no,pwd,DATE_FORMAT(expire_time,'%Y-%m-%d') expire_time from hwt_order_card c  where  c.status =1 and
+           c.order_no =#{orderNo} and c.ee_no =#{eeNo} and org_code =#{orgCode}
+    </select>
+
+
+    <select id="selGoodsInfo" parameterType="java.lang.String" resultType="java.util.HashMap">
+        select d.topic,d.content,d.pic_list, g.goods_name goodsName ,g.pic_src picSrc ,g.topic description from hwt_goods_detail d , goods_info g where g.goods_id = d.goods_id
+            and d.status =1 and g.status =1 and d.goods_id =#{goodsId}
+            order by d.orderby
+    </select>
+
+</mapper>

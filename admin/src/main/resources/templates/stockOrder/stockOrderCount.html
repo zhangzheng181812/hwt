@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>库存订单统计列表</title>
+    <div th:replace="head"></div>
+    <style>
+        .el-select {
+            width: 140px;
+        }
+        .el-table--striped .el-table__body tr.el-table__row--striped.current-row td, .el-table__body tr.current-row>td, .el-table__body tr.hover-row.current-row>td, .el-table__body tr.hover-row.el-table__row--striped.current-row>td, .el-table__body tr.hover-row.el-table__row--striped>td, .el-table__body tr.hover-row>td,.el-table--enable-row-hover .el-table__body tr:hover>td {
+            background-color: #409EFF;
+        }
+        .el-table--border .has-gutter td:nth-last-of-type(2), .el-table--border .has-gutter th:nth-last-of-type(2) {
+            border-right: 1px solid #ebeef5;
+        }
+    </style>
+</head>
+<body>
+<div id="test">
+    <div class="classify-company-c">
+        <span style="margin-left: 16px;">商品名称模糊查询:</span>
+        <el-input  style="width:10em"  type="text" v-model="product_name"> </el-input>
+        <span style="margin-left: 16px;">商品id:</span>
+        <el-input  style="width:10em"  type="text" v-model="goods_id"> </el-input>
+        <span style="margin-left: 16px;">供应商:CATEID</span>
+        <el-input  style="width:10em"  type="text" v-model="cateid"> </el-input>
+        <el-button type="primary" name="button" v-on:click="search">查询</el-button>
+    </div>
+    <div style="margin-top:15px">
+        <el-table
+                ref="testTable"
+                :data="tableData"
+                stripe
+                style="width:100%"
+                border
+                highlight-current-row
+                v-on:row-dblclick="handleMousedblclick">
+            <el-table-column prop="goods_id" width="190" label="商品id" ></el-table-column>
+            <el-table-column prop="product_name" width="190" label="商品名称" ></el-table-column>
+            <el-table-column prop="cateid" width="190" label="cateid" ></el-table-column>
+            <el-table-column prop="product_price" width="190" label="商品面值" ></el-table-column>
+            <el-table-column prop="order_count" width="190" label="订单总数" ></el-table-column>
+            <el-table-column prop="not_ship_num" width="190" label="未发货订单数" ></el-table-column>
+            <el-table-column prop="ship_num" width="190" label="已发货订单数" ></el-table-column>
+            <el-table-column prop="stock_count" width="190" label="库存总量" ></el-table-column>
+            <el-table-column prop="stock_ship_num" width="190" label="库存已发数" ></el-table-column>
+            <el-table-column prop="stock_balance" width="190" label="可用库存数量" ></el-table-column>
+        </el-table>
+        <div align="center">
+            <el-pagination
+                    v-on:size-change="handleSizeChange"
+                    v-on:current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pagesize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vm = new Vue({
+        el: "#test",
+        data: {
+            dialogFormVisible:false,
+            dialogFormVisible2:false,
+            showClose:false,
+            loading:false,
+            tableData:[],
+            goods_id: '',
+            product_name: '',
+            cateid:'',
+            criteria:'',
+            //默认每页数据量
+            pagesize: 10,
+            //默认高亮行数据id
+            highlightId: -1,
+            //当前页码
+            currentPage: 1,
+            //查询的页码
+            start: 1,
+            //默认数据总数
+            totalCount: 1,
+        },
+        methods:{
+            cancelDia:function(form){
+                this.dialogFormVisible=false;
+                this.dialogFormVisible2=false;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            search(){
+                let criteria ={product_name:this.product_name,goods_id:this.goods_id,cateid:this.cateid};
+                this.criteria =JSON.stringify(criteria);
+                this.loadData(this.criteria,this.currentPage,this.pagesize)
+            },
+            //从服务器读取数据
+            loadData: function (criteria, pageNum, pageSize) {
+                var param = {
+                    "param": criteria, "page": pageNum,"pageSize": pageSize
+                };
+                this.$http.post([[@{/stockOrder/stockOrderCount}]],  param, { emulateJSON: true }).then(function (res) {
+                    this.tableData = res.data.data.rows;
+                    this.totalCount = res.data.data.totalCount;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            handleSizeChange:function(val){
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleCurrentChange:function(val){
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleMousedblclick(row,column){
+
+            },
+        },
+    })
+    vm.loadData(vm.criteria, vm.currentPage, vm.pagesize);
+    /*]]>*/
+</script>
+</body>
+</html>

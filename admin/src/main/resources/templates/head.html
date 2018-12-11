@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      th:with='basePath=${#httpServletRequest.getScheme()+"://"+#httpServletRequest.getServerName()+":"+#httpServletRequest.getServerPort()+#httpServletRequest.getContextPath()+"/"}'>
+<head th:fragment="head">
+    <base th:href="${basePath}"/>
+    <meta value="UTF-8"/>
+    <script th:src="@{/js/jquery-3.1.1.min.js}"></script>
+    <script th:src="@{/js/json2.js}"></script>
+    <script th:src="@{/js/moment.js}"></script>
+    <script th:src="@{/js/vue.min.js}"></script>
+    <script th:src="@{/js/vdt.js}"></script>
+    <script th:src="@{/js/vue-router.min.js}"></script>
+    <script th:src="@{/js/vue-resource.min.js}"></script>
+    <script th:src="@{/js/axios.min.js}"></script>
+    <script th:src="@{/element-ui/lib/index.js}"></script>
+    <script th:src="@{/quill_editor/quill.js}"></script>
+    <script th:src="@{/quill_editor/vue-quill-editor.js}"></script>
+    <link rel="stylesheet" th:href="@{/element-ui/lib/theme-chalk/index.css}">
+    <link rel="stylesheet" th:href="@{/quill_editor/quill.bubble.css}">
+    <link rel="stylesheet" th:href="@{/quill_editor/quill.core.css}">
+    <link rel="stylesheet" th:href="@{/quill_editor/quill.snow.css}">
+    <script th:inline="javascript">
+        var basepPath = [[${basePath}]];
+    </script>
+</head>
+</html>

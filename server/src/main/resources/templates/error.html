@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.w3.org/1999/xhtml"
+      th:with='basePath=${BASE_PATH}'>
+<head>
+    <base th:href="${basePath}"/>
+    <meta charset="UTF-8" />
+    <!-- 启用 WebApp 全屏模式 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- 隐藏状态栏/设置状态栏颜色 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- 忽略数字自动识别为电话号码 -->
+    <meta name="format-detection" content="telephone=no"/>
+    <!-- 忽略识别邮箱 -->
+    <meta name="format-detection" content="email=no"/>
+    <meta name="viewport" content="width=640, user-scalable=no"/>
+    <title>错误页面</title>
+
+</head>
+<body>
+<div class="error_txt">
+    <p></p>
+    <h2 th:text="${error.msg}">请稍后再试！</h2>
+</div>
+</body>
+
+<!--<script type="text/javascript" th:inline="javascript">
+    /*<![CDATA[*/
+    var backgroundData = [[${error}]];
+    if(backgroundData.msg==null ||backgroundData.msg=='' || backgroundData.msg== undefined){
+        backgroundData.msg = '请稍后再试！'
+    }
+    var vue = new Vue({
+        el: '.contain',
+        data: backgroundData
+    })
+    /*]]>*/
+</script>-->
+</html>

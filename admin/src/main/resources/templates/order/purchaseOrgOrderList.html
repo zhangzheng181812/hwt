@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>采购单位列表</title>
+    <div th:replace="head"></div>
+    <style>
+        .el-select {
+            width: 140px;
+        }
+        .el-dialog__footer{
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="demo">
+    <div class="classify-company-c">
+        <span style="margin-left: 16px;">开始时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="time"></el-date-picker>
+        <span style="margin-left: 16px;">结束时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="endtime"></el-date-picker>
+        <el-button type="primary" name="button" v-on:click="search">查询</el-button>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <el-button type="primary" name="button" v-on:click="createOrderTable">生成采购明细单</el-button>
+        <a id='downFile' hidden='hidden' target='_blank'>下载表单</a>
+    </div>
+    <div style="margin-top:15px">
+        <el-table
+                ref="testTable"
+                :data="tableData"
+                stripe
+                style="width:100%"
+                border
+                @selection-change="handleSelectionChange"
+                @row-click="handleclick"
+                highlight-current-row>
+            <el-table-column type="selection" :selectable='checkboxT' disabled="true" width="55"> </el-table-column>
+            <el-table-column prop="orgName"  label="单位名称" ></el-table-column>
+            <el-table-column prop="orderCount"  label="订单笔数" ></el-table-column>
+            <el-table-column prop="total_price"  label="订单总金额" ></el-table-column>
+            <el-table-column prop="productCount"  label="购卡总张数" ></el-table-column>
+            <el-table-column prop="status" :formatter="formatStatus" label="状态" ></el-table-column>
+            <el-table-column label="操作" min-width="80" align="center">
+                <template slot-scope="scope" v-if="scope.row.status=='0' || scope.row.status=='1' || scope.row.status=='2'">
+                    <el-button type="primary" name="button" v-on:click="add(scope.row)">确认汇款</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <el-dialog title="确认已汇款信息" :visible.sync="dialogFormVisible" width="500px;"
+                   :close-on-press-escape="showClose" :show-close="showClose" :close-on-click-modal="showClose">
+            <el-form ref="form" label-width="100px" :label-position="'right'" :rules="rules" class="demo-ruleForm" :model="ruleForm">
+                <el-form-item label="单位名称:" prop="orgName">
+                    <el-input style="width:20em" disabled="true" v-model="ruleForm.org_name"></el-input>
+                </el-form-item>
+                <el-form-item label="订单总金额:" prop="order_amount">
+                    <el-input style="width:20em" disabled="true" data-options="min:0,precision:2" v-model="ruleForm.order_amount" ></el-input>元
+                </el-form-item>
+                <el-form-item label="汇款金额:" prop="pay_amount">
+                    <el-input style="width:20em" data-options="min:0,precision:2" v-model="ruleForm.pay_amount" ></el-input>元
+                </el-form-item>
+                <el-form-item label="汇款账户:" prop="pay_account">
+                    <el-input style="width:20em" v-model="ruleForm.pay_account"></el-input>
+                </el-form-item>
+                <el-form-item label="汇款时间:" prop="pay_time">
+                    <el-date-picker value-format="yyyy-MM-dd" style="width:20em" type="date" v-model="ruleForm.pay_time"></el-date-picker>
+                </el-form-item>
+                <el-input type="hidden" v-model="ruleForm.id"/>
+                <el-input type="hidden" v-model="ruleForm.org_code"/>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button v-on:click="cancelDia('form')">取 消</el-button>
+                <el-button type="primary" :disabled="submitDisabled" v-on:click="ins('form')">确 定</el-button>
+            </div>
+        </el-dialog>
+        <div align="center">
+            <el-pagination
+                    v-on:size-change="handleSizeChange"
+                    v-on:current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pagesize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vm = new Vue({
+        el: "#demo",
+        data: {
+            showClose:false,
+            submitDisabled:false,
+            dialogFormVisible: false,
+            tableData: [],
+            //多选数组
+            multipleSelection: [],
+            time: '',
+            endtime: '',
+            criteria: '',
+            //默认每页数据量
+            pagesize: 10,
+            //默认高亮行数据id
+            highlightId: -1,
+            //当前页码
+            currentPage: 1,
+            //查询的页码
+            start: 1,
+            //默认数据总数
+            totalCount: 1,
+            ruleForm: {
+                id: '',
+                org_code: '',
+                org_name: '',
+                order_amount: '',
+                pay_amount: '',
+                pay_account: '',
+                pay_time: '',
+            },
+            rules: {
+                pay_amount: [
+                    {required: true, message: '请输入汇款金额', trigger: 'blur'}
+                ],
+                pay_account: [
+                    {required: true, message: '请输入付款账户', trigger: 'blur'}
+                ],
+                pay_time: [
+                    {required: true, message: '请输入汇款时间', trigger: 'blur'}
+                ],
+            }
+        },
+        methods: {
+            search(){
+                let criteria = {start_time: this.time, end_time: this.endtime};
+                this.criteria = JSON.stringify(criteria);
+                this.loadData(this.criteria, this.currentPage, this.pagesize)
+            },
+            //从服务器读取数据
+            loadData: function (criteria, pageNum, pageSize) {
+                var param = {
+                    "param": criteria, "page": pageNum, "pageSize": pageSize
+                };
+                this.$http.post([[@{/order/searchPurchaseOrgOrder}]],param, {emulateJSON: true}).
+                then(function (res) {
+                    this.tableData = res.data.data.rows;
+                    this.totalCount = res.data.data.totalCount;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            //多选响应
+            handleSelectionChange: function (val) {
+                this.multipleSelection = val;
+            },
+            //点击行响应
+            handleclick: function (row, event, column) {
+                this.highlightId = row.id;
+            },
+            checkboxT(row,index){
+                if (row.status == 0 || row.status == 1 || row.status == 2 || row.status == 7) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            },
+            handleSizeChange: function (val) {
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleCurrentChange: function (val) {
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            //时间格式化
+            dateFormat: function (row, column) {
+                var date = row[column.property];
+                if (date == undefined) {
+                    return "";
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss");//导入moment.js
+            },
+            //状态格式化
+            formatStatus: function (row, column) {
+                var status = row[column.property];
+                if (status == 1) {
+                    return "已发货";
+                } else if (status == 0) {
+                    return "未处理";
+                } else if (status == 2) {
+                    return "发货失败";
+                } else if (status == 6) {
+                    return "已汇款";
+                } else if (status == 7) {
+                    return "已导出明细";
+                }
+            },
+            //取消
+            cancelDia:function(form){
+                this.submitDisabled=false;
+                this.dialogFormVisible=false;
+                //清空数据
+                this.$refs[form].resetFields();
+                this.ruleForm.id = '';
+                this.ruleForm.org_code = '';
+                this.ruleForm.order_amount = '';
+                this.ruleForm.pay_amount = '';
+                this.ruleForm.pay_account = '';
+                this.ruleForm.pay_time = '';
+            },
+            createOrderTable:function(){
+                if(this.multipleSelection.length==0){
+                    this.$notify({
+                        title: '警告',
+                        message: '请选择需要生成的数据',
+                        type: 'warning'
+                    });
+                }else {
+                    var orgCode = "";
+                    for(var i=0;i<this.multipleSelection.length;i++){
+                        orgCode = orgCode+""+this.multipleSelection[i].org_code+",";
+                    }
+                    let postUrl ='';
+                    postUrl=[[@{/order/createTableOrder}]];
+                    var json = {
+                        "orderInfo":orgCode.substring(0, orgCode.lastIndexOf(','))
+                    }
+                    this.$http.post(postUrl,json, {emulateJSON: true}).then((response)=> {
+                        this.submitDisabled=false;
+                        if (response.data.resultCode == '000') {
+                            let posturl=[[@{/order/download}]];
+                            $('#downFile').show();
+                            $('#downFile').attr("href",posturl+"?fileName="+response.data.fileName);
+                            this.$message({
+                                message: response.data.msg,
+                                type: 'success'
+                            });
+                            this.loadData(this.criteria, this.currentPage, this.pagesize)
+                        } else{
+                            this.$notify({
+                                title: '警告',
+                                message: response.data.msg,
+                                type: 'warning'
+                            });
+                            return false;
+                        }
+                    });
+                }
+            },
+            add:function (row) {
+                this.dialogFormVisible = true;
+                this.ruleForm.org_code = row.org_code;
+                this.ruleForm.order_amount = row.total_price;
+                this.ruleForm.id = row.id;
+                this.ruleForm.org_name = row.orgName;
+            },
+            ins(formName){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.submitDisabled=true;
+                        var json = {
+                            'id':this.ruleForm.id,
+                            'orgName':this.ruleForm.org_name,
+                            'orgCode':this.ruleForm.org_code,
+                            'orderAmount':this.ruleForm.order_amount,
+                            'payAmount': this.ruleForm.pay_amount,
+                            'payAccount':  this.ruleForm.pay_account,
+                            'payTime': this.ruleForm.pay_time
+                        };
+                        let postUrl=[[@{/order/insertOrderAmount}]];
+                        this.$http.post(postUrl,json, {emulateJSON: true}).then((response)=> {
+                            this.submitDisabled=false;
+                            if (response.data.resultCode == '000') {
+                                this.$message({
+                                    message: response.data.msg,
+                                    type: 'success'
+                                });
+                                this.cancelDia(formName);
+                                this.loadData(this.criteria, this.currentPage, this.pagesize)
+                            } else{
+                                this.$notify({
+                                    title: '警告',
+                                    message: response.data.msg,
+                                    type: 'warning'
+                                });
+                                return false;
+                            }
+                        });
+                    } else {
+                        console.log('error submit!!');
+                    }
+                    return false;
+                });
+            },
+        }
+    })
+    vm.loadData(vm.criteria, vm.currentPage, vm.pagesize);
+    /*]]>*/
+</script>
+</body>
+</html>

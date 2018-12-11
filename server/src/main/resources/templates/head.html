@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<!--
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      th:with='basePath=${#httpServletRequest.getScheme()+"://"+#httpServletRequest.getServerName()+":"+#httpServletRequest.getServerPort()+#httpServletRequest.getContextPath()+"/"}'>
+-->
+
+<!--生产配置，需要引入https资源，这里使用相对协议。-->
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+>
+
+<head th:fragment="head">
+    <base th:href="${BASE_PATH}"/>
+    <meta value="UTF-8"/>
+    <!--<title th:text="#{head.title}"></title>-->
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link rel="stylesheet" th:href="@{/css/reset.css}"/>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+    <script th:src="@{/js/vue.js}"></script>
+    <script th:src="@{/js/jquery-2.2.3.min.js}"></script>
+    <script th:src="@{/js/bootstrap.min.js}"></script>
+    <script th:inline="javascript">
+        var basepPath = [[${basePath}]];
+    </script>
+</head>
+
+</html>

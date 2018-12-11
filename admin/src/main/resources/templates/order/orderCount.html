@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>订单统计列表</title>
+    <div th:replace="head"></div>
+    <style>
+        .el-select {
+            width: 140px;
+        }
+        .el-dialog__footer{
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="demo">
+    <div class="classify-company-c">
+        <span style="margin-left: 16px;">开始时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="time"></el-date-picker>
+        <span style="margin-left: 16px;">结束时间:</span>
+        <el-date-picker value-format="yyyy-MM-dd" style="width:10em" type="date" v-model="endtime"></el-date-picker>
+        <span style="margin-left: 16px;">订单状态:</span>
+        <el-select v-model="status">
+            <el-option v-for="drug in drugs"  :key="drug.status"  :label="drug.statusName" :value="drug.status" ></el-option>
+        </el-select>
+        <el-button type="primary" name="button" v-on:click="search">查询</el-button>
+    </div>
+    <div style="margin-top:15px">
+        <el-table
+                ref="testTable"
+                :data="tableData"
+                stripe
+                style="width:100%"
+                border
+                highlight-current-row>
+            <el-table-column prop="total_price"  label="总金额(元)" ></el-table-column>
+            <el-table-column prop="num"  label="总数量" ></el-table-column>
+            <el-table-column prop="count"  label="订单笔数" ></el-table-column>
+            <el-table-column prop="goods_name"  label="商品名称" ></el-table-column>
+            <el-table-column prop="min_date" :formatter="dateFormat"  label="开始日期" ></el-table-column>
+            <el-table-column prop="max_date" :formatter="dateFormat"  label="截止日期" ></el-table-column>
+        </el-table>
+        <div align="center">
+            <el-pagination
+                    v-on:size-change="handleSizeChange"
+                    v-on:current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pagesize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var vm = new Vue({
+        el: "#demo",
+        data: {
+            tableData: [],
+            goods_id: '',
+            time: '',
+            endtime: '',
+            status: '',
+            drugs: [{status: "", statusName: '全部'}, {status: "0", statusName: '未处理'}, {
+                status: "1",
+                statusName: '已发货'
+            }, {status: "2", statusName: '发货失败'}],
+            criteria: '',
+            //默认每页数据量
+            pagesize: 10,
+            //默认高亮行数据id
+            highlightId: -1,
+            //当前页码
+            currentPage: 1,
+            //查询的页码
+            start: 1,
+            //默认数据总数
+            totalCount: 1,
+        },
+        methods: {
+            search(){
+                let criteria = {time: this.time, endtime: this.endtime, status: this.status};
+                this.criteria = JSON.stringify(criteria);
+                this.loadData(this.criteria, this.currentPage, this.pagesize)
+            },
+            //从服务器读取数据
+            loadData: function (criteria, pageNum, pageSize) {
+                var param = {
+                    "param": criteria, "page": pageNum, "pageSize": pageSize
+                };
+                this.$http.post([[@{/order/orderCount
+            }]],
+                param, {emulateJSON: true}
+                ).
+                then(function (res) {
+                    this.tableData = res.data.data.rows;
+                    this.totalCount = res.data.data.totalCount;
+                }, function () {
+                    console.log('failed');
+                });
+            },
+            handleSizeChange: function (val) {
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            handleCurrentChange: function (val) {
+                this.currentPage = val;
+                this.loadData(this.criteria, this.currentPage, this.pagesize);
+            },
+            //时间格式化
+            dateFormat: function (row, column) {
+                var date = row[column.property];
+                if (date == undefined) {
+                    return "";
+                }
+                return moment(date).format("YYYY-MM-DD HH:mm:ss");//导入moment.js
+            },
+            //状态格式化
+            formatStatus: function (row, column) {
+                var status = row[column.property];
+                if (status == 1) {
+                    return "已发货";
+                } else if (status == 0) {
+                    return "未处理";
+                } else if (status == 2) {
+                    return "发货失败";
+                } else {
+                    return "未知";
+                }
+            },
+        }
+    })
+    vm.loadData(vm.criteria, vm.currentPage, vm.pagesize);
+    /*]]>*/
+</script>
+</body>
+</html>

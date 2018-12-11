@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.zhx.admin.stockOrderCount.mapper.StockOrderCountMapper">
+
+    <select id="stockOrderCount" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+
+        SELECT
+            tt.goods_id ,
+            ht.cateid,
+            tt.product_name , <!-- 商品名称 -->
+            tt.product_price , <!-- 商品面值 -->
+            IFNULL(SUM(tt.num),0) AS order_count,  <!-- 订单总数 -->
+            IFNULL(t0.status1, 0) AS not_ship_num,  <!-- 未发货订单数 -->
+            IFNULL(t0.status2,0) AS ship_num, <!-- 已发货订单数 -->
+            IFNULL(ht.cateid1,0) AS stock_count, <!-- 库存总数 -->
+            IFNULL(ht.status2,0) AS stock_balance, <!-- 可用库存结余 -->
+            IFNULL(ht.status1,0) AS stock_ship_num  <!-- 库存已用数 -->
+        FROM
+            (
+            SELECT
+                t.status1,
+                ttt.status2,
+                t.goods_id
+            FROM
+                (
+                    SELECT
+                    SUM(t2.num) AS status1,
+                    t2.goods_id
+                    FROM
+                    hwt_order_info t2
+                    LEFT JOIN hwt_goods_stock t3 ON t2.goods_id = t3.goods_id
+                    WHERE
+                    t3. STATUS = 1
+                    AND t2. STATUS = 0
+                    <if test="product_name!=null and product_name!='' ">
+                        AND t2.product_name LIKE CONCAT('%',#{product_name},'%')
+                    </if>
+                    <if test="goods_id!=null and goods_id!='' ">
+                        AND t2.goods_id = #{goods_id}
+                    </if>
+                    <if test="cateid!=null and cateid!='' ">
+                        AND t3.cateid = #{cateid}
+                    </if>
+                    GROUP BY
+                    t2.goods_id
+                ) t
+                LEFT JOIN (
+                    SELECT
+                    SUM(t5.num) AS status2,
+                    t5.goods_id
+                    FROM
+                    hwt_order_info t5
+                    LEFT JOIN hwt_goods_stock t6 ON t5.goods_id = t6.goods_id
+                    WHERE
+                    t6. STATUS = 1
+                    AND t5. STATUS IN (1,6,7)
+                    <if test="product_name!=null and product_name!='' ">
+                        AND t5.product_name LIKE CONCAT('%',#{product_name},'%')
+                    </if>
+                    <if test="goods_id!=null and goods_id!='' ">
+                        AND t5.goods_id = #{goods_id}
+                    </if>
+                    <if test="cateid!=null and cateid!='' ">
+                        AND t6.cateid = #{cateid}
+                    </if>
+                    GROUP BY
+                    t5.goods_id
+                ) ttt ON ttt.goods_id = t.goods_id
+            ) t0,
+            (
+                SELECT
+                t4.goods_id,
+                t4.product_name,
+                t4.product_price,
+                t4.num,
+                t5.cateid
+                FROM
+                hwt_order_info t4
+                LEFT JOIN hwt_goods_stock t5 ON t4.goods_id = t5.goods_id
+                WHERE
+                t5. STATUS = 1
+                <if test="product_name!=null and product_name!='' ">
+                    AND t4.product_name LIKE CONCAT('%',#{product_name},'%')
+                </if>
+                <if test="goods_id!=null and goods_id!='' ">
+                    AND t4.goods_id = #{goods_id}
+                </if>
+                <if test="cateid!=null and cateid!='' ">
+                    AND t5.cateid = #{cateid}
+                </if>
+            ) tt
+        LEFT JOIN
+            (
+                SELECT
+                hht.cateid1,
+                hht.status1,
+                hh.status2,
+                hht.cateid
+            FROM
+                (
+                SELECT
+                    hhh.cateid,
+                    hhh.cateid1,
+                    h.status1
+                FROM
+                    (
+                    SELECT
+                        COUNT(h3.cateid) AS cateid1,
+                        h3.cateid AS cateid
+                    FROM
+                        hwt_xshe_stock h3
+                    LEFT JOIN hwt_goods_stock h6 ON h6.cateid = h3.cateid
+                    WHERE
+                        h6. STATUS = 1
+                        <if test="cateid!=null and cateid!='' ">
+                            AND h3.cateid = #{cateid}
+                        </if>
+                        GROUP BY h3.cateid
+                        ) hhh
+                    LEFT JOIN (
+                        SELECT
+                        COUNT(h1. STATUS) AS status1,
+                        h1.cateid
+                        FROM
+                        hwt_xshe_stock h1
+                        LEFT JOIN hwt_goods_stock h4 ON h4.cateid = h1.cateid
+                        WHERE
+                        h4. STATUS = 1
+                        AND h1. STATUS = "06"
+                        <if test="cateid!=null and cateid!='' ">
+                            AND h4.cateid = #{cateid}
+                        </if>
+                        GROUP BY
+                        h1.cateid
+                    ) h ON hhh.cateid = h.cateid
+                ) hht
+            LEFT JOIN (
+                SELECT
+                    COUNT(h2. STATUS) AS status2,
+                    h2.cateid
+                FROM
+                    hwt_xshe_stock h2
+                LEFT JOIN hwt_goods_stock h5 ON h5.cateid = h2.cateid
+                WHERE
+                  h5. STATUS = 1
+                AND h2. STATUS = "04"
+                <if test="cateid!=null and cateid!='' ">
+                    AND h5.cateid = #{cateid}
+                </if>
+                GROUP BY h2.cateid
+                ) hh ON hht.cateid = hh.cateid
+            ) ht ON tt.cateid = ht.cateid
+        WHERE
+        t0.goods_id = tt.goods_id
+        GROUP BY
+        tt.goods_id
+
+    </select>
+
+</mapper>

@@ -1,0 +1,88 @@
+server:
+  port: 8807
+  servlet:
+    contextPath: /appleitunes_gx
+    session:
+      timeout: 30m
+
+logging:
+  config: classpath:log4j2-dev-spring.yml
+
+#spring配置
+spring:
+  application:
+    name: ciserver
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  mvc:
+    #静态资源拦截
+    static-path-pattern: /**
+  resources:
+    #会覆盖默认地址，所以需要手动把默认的加上，新的地址放最末尾
+    static-locations: 'classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/,file:${siteConfig.filePath}'
+  redis:
+    host: 10.6.4.154
+    password: foobared
+    port: 6379
+    database: 3
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://10.6.4.154:3306/zhx_online?useUnicode=true&characterEncoding=utf8
+    username: zhx_online
+    password: 123456
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      maxLifetime: 1765000 #一个连接的生命时长（毫秒），超时而且没被使用则被释放（retired），缺省:30分钟，建议设置比数据库超时时长少30秒以上
+      maximumPoolSize: 20 #连接池中允许的最大连接数。缺省值：10；推荐的公式：((core_count * 2) + effective_spindle_count)
+      minimumIdle:  1 #连接池中允许的最小空闲连接数
+  cache:
+    ehcache:
+      config: ehcache.xml
+
+
+
+
+  #模版引擎
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+    mode: LEGACYHTML5
+
+#mybatis
+mybatis:
+  mapperLocations: classpath*:com/zhx/*/*/mapper/*Mapper.xml
+  typeAliasesPackage: com.zhx.hwt.web
+
+management:
+  #关闭安全检测
+  security:
+    enabled: false
+  port: ${server.port}
+
+#监控监控信息设置为非敏感
+endpoints:
+  health:
+    sensitive: false
+
+
+hwt:
+  api:
+    url: 'https://uatbizapi.yianyouxuan.com'
+    client_id: 'F8PgTllR8AAR9ry3NJ3HJGSUSbrmrWOXXJjFSVCl'
+    client_secret: 'lEihGg74JEXWS6OOKPq0lRjAdNlLpxtjzVLx2yWGjE7xRcrzr0f7mSXVPZnsONI8ZqGzqGyib0X5ExiLsBsxJloYVAkKzgKMW6kHu2fXdbRvS3U1nTe2W0FACwatzds8'
+    tokenUrl: '/api/oauth2/token/'
+    userUrl: '/api/oauth2/get-user-info/'
+    orgUrl: '/api/organization/organization-detail/'
+
+
+#配置属性
+site:
+  ##########用于加密解密####################
+  encryptkey: 5j3EAa7qp/R8xLquBKQskSaAtp224McC
+  ################################################
